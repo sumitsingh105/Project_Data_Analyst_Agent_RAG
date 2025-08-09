@@ -1,0 +1,22 @@
+# Core application libraries
+fastapi
+uvicorn[standard]
+python-multipart
+docker
+aiofiles
+google-generativeai
+playwright
+
+# Data analysis and scraping libraries
+pandas
+numpy
+scipy
+scikit-learn
+matplotlib
+seaborn
+requests
+beautifulsoup4
+duckdb
+pyarrow
+lxml
+serpapi
