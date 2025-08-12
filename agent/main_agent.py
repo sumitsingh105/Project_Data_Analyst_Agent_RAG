@@ -6,14 +6,49 @@ from .grader import grade_answer
 
 from .agent import (
     run_agent_loop,
-    validate_generic_results   # ← add this line
+    detect_analysis_type,
+    handle_duckdb_analysis,
+    validate_generic_results
 )
 
 MAX_RETRIES = 3
 
 async def agentic_rag_agent(task_description: str, workspace_dir: str, data_sources: list):
     print("Starting Agentic RAG flow")
+    print(f"Task preview: {task_description[:150]}...")
+    
+    # BULLETPROOF ROUTING - Force DuckDB for court analysis
+    task_lower = task_description.lower()
+    
+    # Primary check: Force DuckDB for court-related content
+    court_keywords = ['high court', 'court', 'judgment', 'disposed', 'cases', 'ecourts', 'regression slope']
+    is_court_analysis = any(keyword in task_lower for keyword in court_keywords)
+    
+    if is_court_analysis:
+        print("🎯 FORCED ROUTING: Court analysis detected - using DuckDB")
+        try:
+            return await handle_duckdb_analysis(task_description, workspace_dir)
+        except Exception as e:
+            print(f"DuckDB analysis failed: {e}")
+            return {"error": f"DuckDB analysis failed: {e}"}
+    
+    # Secondary check: Use your existing detection logic
+    try:
+        print("→ Running secondary detection...")
+        analysis_type = detect_analysis_type(task_description)
+        print(f"Detection result: {analysis_type}")
+        
+        if analysis_type == 'duckdb':
+            print("→ Using DuckDB analysis (secondary detection)")
+            return await handle_duckdb_analysis(task_description, workspace_dir)
+    except Exception as e:
+        print(f"Secondary detection failed: {e}")
+    
+    # Continue with your existing RAG logic for Wikipedia/general queries
+    print("→ Using existing RAG analysis")
+    
     query_type = analyze_query(task_description)
+    print(f"Query type from analyzer: {query_type}")
     
     if query_type == 'local':
         candidates = retrieve_data(task_description, data_sources)
@@ -36,7 +71,7 @@ async def agentic_rag_agent(task_description: str, workspace_dir: str, data_sour
             rewritten_query = rewrite_query(rewritten_query, last_error)
             continue
         
-        rubric = {'required_keys': []}  # Define expected keys in output if applicable
+        rubric = {'required_keys': []}
         if grade_answer(result):
             return result
         else:

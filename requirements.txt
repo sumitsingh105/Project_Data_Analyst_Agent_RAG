@@ -21,3 +21,4 @@ pyarrow
 lxml
 serpapi
 aiohttp
+duckdb>=0.9.0
