@@ -20,3 +20,4 @@ duckdb
 pyarrow
 lxml
 serpapi
+aiohttp

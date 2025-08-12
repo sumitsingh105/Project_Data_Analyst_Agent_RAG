@@ -3,7 +3,11 @@ from .query_analyzer import analyze_query
 from .retriever import retrieve_data, grade_retrieval_matches
 from .query_rewriter import rewrite_query
 from .grader import grade_answer
-from .agent import run_agent_loop  # Your enhanced run_agent_loop from agent.py
+
+from .agent import (
+    run_agent_loop,
+    validate_generic_results   # ← add this line
+)
 
 MAX_RETRIES = 3
 
