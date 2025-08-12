@@ -4,22 +4,23 @@ from fastapi import FastAPI
 from api.endpoints import router as api_router
 from agent.sandbox import create_sandbox_image
 
-# Environment-configurable workspace directory
-TEMP_DIR = os.getenv("TEMP_DIR", "temp_workspaces")
+# Render uses PORT 10000 by default
+TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/workspaces")  # Use /tmp for Render
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
-APP_PORT = int(os.getenv("APP_PORT", 8000))
+APP_PORT = int(os.getenv("APP_PORT", 10000))  # Render default port
 
-# Initialize FastAPI app
 app = FastAPI(title="Data Analyst Agent")
-
-# Attach API routes
 app.include_router(api_router)
 
 def startup_tasks():
     print("Initializing Data Analyst Agent...")
-    create_sandbox_image()
+    try:
+        create_sandbox_image()
+    except Exception as e:
+        print(f"Sandbox creation failed (expected on Render): {e}")
+    
     os.makedirs(TEMP_DIR, exist_ok=True)
-    print(f"Temporary workspace directory is '{TEMP_DIR}'.")
+    print(f"Temporary workspace directory: '{TEMP_DIR}'")
 
 if __name__ == "__main__":
     startup_tasks()

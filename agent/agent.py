@@ -1242,25 +1242,30 @@ print(json.dumps(answers))
 '''
 
 async def execute_duckdb_code(code: str, workspace_dir: str):
-    """Execute DuckDB analysis code - IMPROVED JSON PARSING"""
+    """Execute DuckDB analysis code - Render compatible"""
     try:
         print(f"Executing DuckDB analysis in: {workspace_dir}")
         
         code_file = os.path.join(workspace_dir, "duckdb_analysis.py")
         
-        print(f"Writing code to: {code_file}")
-        
         with open(code_file, 'w') as f:
             f.write(code)
         
-        # Execute with the workspace as working directory
+        # Use absolute python path for Render
+        import sys
+        python_exec = sys.executable
+        
         result = subprocess.run(
-            ['python', 'duckdb_analysis.py'],
+            [python_exec, 'duckdb_analysis.py'],
             capture_output=True, 
             text=True, 
-            timeout=300,
-            cwd=workspace_dir
+            timeout=300,  # 5 minute timeout
+            cwd=workspace_dir,
+            env=os.environ.copy()  # Pass environment variables
         )
+        
+        # [Rest of your existing execution code...]
+
         
         print(f"Execution result: {result.returncode}")
         if result.stderr:
