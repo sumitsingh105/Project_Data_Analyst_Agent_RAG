@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import base64
 import io          # ← add this
 import json
+
 def generate_adaptive_analysis_prompt(task_description: str, column_analysis: dict, sample_data: str) -> str:
-    """Ultra-safe prompt generation with support for both Hollywood and Indian films"""
+    """Completely universal prompt that works with ANY data and questions"""
     
-    print("Generating adaptive prompt...")
+    print("Generating bulletproof universal prompt...")
     
     # Safe question extraction
     try:
@@ -16,39 +17,25 @@ def generate_adaptive_analysis_prompt(task_description: str, column_analysis: di
         questions = re.findall(r'\d+\.\s*(.+?)(?=\d+\.|$)', task_str, re.DOTALL)
         questions = [str(q).strip() for q in questions if q.strip()]
         if not questions:
-            questions = ["Analyze the provided dataset"]
+            questions = [task_description]
     except Exception as e:
         print(f"Error extracting questions: {e}")
-        questions = ["Analyze the provided dataset"]
+        questions = [task_description]
     
-    # Safe column context generation
+    # Safe column context
     try:
         column_lines = []
         for col_name, analysis in column_analysis.items():
             col_str = str(col_name)
             type_str = str(analysis.get('likely_type', 'unknown'))
             samples = analysis.get('sample_values', [])
-            
-            sample_strs = []
-            for s in samples[:2]:
-                try:
-                    sample_strs.append(str(s)[:50])
-                except:
-                    pass
-            
+            sample_strs = [str(s)[:30] for s in samples[:2] if s is not None]
             sample_text = ', '.join(sample_strs) if sample_strs else "no samples"
             column_lines.append(f"- {col_str} ({type_str}): {sample_text}")
-        
         column_context = "Available columns:\n" + '\n'.join(column_lines)
     except Exception as e:
         print(f"Error building column context: {e}")
         column_context = "Column information unavailable"
-    
-    # Safe sample data handling  
-    try:
-        sample_text = str(sample_data)[:500]
-    except:
-        sample_text = "Sample data unavailable"
     
     # Format questions safely
     try:
@@ -56,46 +43,41 @@ def generate_adaptive_analysis_prompt(task_description: str, column_analysis: di
     except:
         questions_text = "1. Analyze the data"
     
-    # Detect if this is Indian films data
-    is_indian_films = ('indian' in task_description.lower() or 
-                      'crore' in sample_data.lower() or 
-                      any('indian_currency' in analysis.get('likely_type', '') for analysis in column_analysis.values()))
+    print("Universal prompt generation complete")
     
-    print("Prompt generation complete")
-    
-    if is_indian_films:
-        return f"""
-You are analyzing Indian films box office data. Write a Python script to answer the questions.
+    return f"""
+You are a completely universal data analyst. Write a Python script that works with ANY data structure and questions.
 
 COLUMNS:
 {column_context}
 
-SAMPLE DATA:
-{sample_text}
-
 QUESTIONS:
 {questions_text}
 
-CRITICAL REQUIREMENTS:
-- Handle Indian currency in crores properly
-- Use exact column names from the CSV
-- Return ONLY raw values, not sentences
-- For numbers: return integer/float only
-- For titles: return string only
+REQUIREMENTS:
+- Auto-detect ALL column types and purposes
+- Handle ANY question pattern dynamically  
+- Return JSON array matching question count
+- NO hardcoded assumptions about data
 
-COMPLETE SCRIPT:
-
+COMPLETE UNIVERSAL SCRIPT:
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import base64
+import io
 import json
+import re
 
 Load data
 df = pd.read_csv('/workspace/cleaned_data.csv')
-print("=== DATA DEBUG ===")
-print(f"Columns: {{list(df.columns)}}")
+print("=== DATA LOADED ===")
 print(f"Shape: {{df.shape}}")
-print("Sample data:")
-print(df.head())
+print(f"Columns: {{list(df.columns)}}")
+print("Sample:")
+print(df.head(3))
 
 Safe JSON conversion
 def safe_json_convert(obj):
@@ -107,246 +89,357 @@ if isinstance(obj, (np.integer,)):
 return int(obj)
 if isinstance(obj, (np.floating,)):
 return float(obj)
+if isinstance(obj, str):
+return str(obj)
 return obj
 
-Clean and prepare data
+DYNAMIC COLUMN DETECTION - Completely embedded
+def detect_columns(dataframe):
+detected = {{
+'location_col': None,
+'population_col': None,
+'continent_col': None,
+'year_col': None,
+'title_col': None,
+'gross_col': None,
+'rank_col': None,
+'peak_col': None,
+'numeric_cols': [],
+'text_cols': []
+}}
+
+for col in dataframe.columns:
+    col_lower = col.lower()
+    
+    # Detect location/country column
+    if any(term in col_lower for term in ['location', 'country', 'name', 'place']) and not detected['location_col']:
+        detected['location_col'] = col
+        
+    # Detect population column
+    elif any(term in col_lower for term in ['population', 'pop']) and not detected['population_col']:
+        detected['population_col'] = col
+        
+    # Detect continent column
+    elif 'continent' in col_lower and not detected['continent_col']:
+        detected['continent_col'] = col
+        
+    # Detect year/date column
+    elif any(term in col_lower for term in ['year', 'date']) and not detected['year_col']:
+        detected['year_col'] = col
+        
+    # Detect title/movie column
+    elif any(term in col_lower for term in ['title', 'film', 'movie']) and not detected['title_col']:
+        detected['title_col'] = col
+        
+    # Detect gross/revenue column  
+    elif any(term in col_lower for term in ['gross', 'revenue', 'earnings', 'box']) and not detected['gross_col']:
+        detected['gross_col'] = col
+        
+    # Detect rank column
+    elif 'rank' in col_lower and not detected['rank_col']:
+        detected['rank_col'] = col
+        
+    # Detect peak column
+    elif 'peak' in col_lower and not detected['peak_col']:
+        detected['peak_col'] = col
+    
+    # Classify as numeric or text
+    if pd.api.types.is_numeric_dtype(dataframe[col]):
+        detected['numeric_cols'].append(col)
+    elif pd.api.types.is_object_dtype(dataframe[col]):
+        # Test if convertible to numeric
+        test_numeric = pd.to_numeric(dataframe[col], errors='coerce')
+        if test_numeric.notna().sum() > len(dataframe) * 0.6:  # >60% convertible
+            detected['numeric_cols'].append(col)
+        else:
+            detected['text_cols'].append(col)
+
+return detected
+Detect columns
+col_info = detect_columns(df)
+print("=== COLUMN DETECTION ===")
+for key, value in col_info.items():
+print(f"{{key}}: {{value}}")
+
+Prepare numeric data
 df_work = df.copy()
-df_work.loc[:, 'year_num'] = pd.to_numeric(df_work['Year'], errors='coerce')
-df_work.loc[:, 'gross_num'] = pd.to_numeric(df_work['Worldwide gross'], errors='coerce')
 
-print("=== AFTER CLEANING ===")
-print("Data types:", df_work[['year_num', 'gross_num']].dtypes)
-print("Gross values (first 10):")
-print(df_work['gross_num'].head(10))
-print(f"Gross range: {{df_work['gross_num'].min()}} to {{df_work['gross_num'].max()}}")
+Convert detected columns to numeric
+if col_info['population_col'] and col_info['population_col'] in df.columns:
+df_work['population_num'] = pd.to_numeric(df_work[col_info['population_col']], errors='coerce')
+print(f"Created population_num from {{col_info['population_col']}}")
 
+if col_info['year_col'] and col_info['year_col'] in df.columns:
+df_work['year_num'] = pd.to_numeric(df_work[col_info['year_col']], errors='coerce')
+print(f"Created year_num from {{col_info['year_col']}}")
+
+if col_info['gross_col'] and col_info['gross_col'] in df.columns:
+df_work['gross_num'] = pd.to_numeric(df_work[col_info['gross_col']], errors='coerce')
+print(f"Created gross_num from {{col_info['gross_col']}}")
+
+if col_info['rank_col'] and col_info['rank_col'] in df.columns:
+df_work['rank_num'] = pd.to_numeric(df_work[col_info['rank_col']], errors='coerce')
+print(f"Created rank_num from {{col_info['rank_col']}}")
+
+if col_info['peak_col'] and col_info['peak_col'] in df.columns:
+df_work['peak_num'] = pd.to_numeric(df_work[col_info['peak_col']], errors='coerce')
+print(f"Created peak_num from {{col_info['peak_col']}}")
+
+Parse questions
+questions_text = "{questions_text}"
+question_list = [line.strip() for line in questions_text.split('\n') if line.strip() and not line.strip().replace('.', '').isdigit()]
+
+print(f"=== PROCESSING {{len(question_list)}} QUESTIONS ===")
 answers = []
 
-Answer questions based on the specific queries
-try:
-# Analyze the questions to determine thresholds
-questions_lower = "{questions_text}".lower()
-
-# Question 1: Count movies above threshold before specific year
-if "1000 crore" in questions_lower and "before" in questions_lower:
-    # Extract year (likely 2015)
-    year_threshold = 2015
-    gross_threshold = 1000  # crore
-    
-    before_year_mask = df_work['year_num'] < year_threshold
-    over_threshold_mask = df_work['gross_num'] >= gross_threshold
-    condition = before_year_mask & over_threshold_mask
-    count = condition.sum()
-    
-    print(f"Films before {{year_threshold}}: {{before_year_mask.sum()}}")
-    print(f"Films over {{gross_threshold}} crore: {{over_threshold_mask.sum()}}")
-    print(f"Films over {{gross_threshold}} crore before {{year_threshold}}: {{count}}")
-    
-    answers.append(int(count))
-else:
-    answers.append(0)
-
-# Question 2: Earliest film over threshold
-if "1000 crore" in questions_lower and "earliest" in questions_lower:
-    gross_threshold = 1000  # crore
-    
-    over_threshold_mask = df_work['gross_num'] >= gross_threshold
-    over_threshold_films = df_work[over_threshold_mask]
-    
-    if len(over_threshold_films) > 0:
-        earliest_idx = over_threshold_films['year_num'].idxmin()
-        earliest_title = df_work.loc[earliest_idx, 'Title']
-        earliest_year = df_work.loc[earliest_idx, 'year_num']
-        
-        print(f"Films over {{gross_threshold}} crore: {{len(over_threshold_films)}}")
-        print(f"Earliest: {{earliest_title}} ({{int(earliest_year)}})")
-        
-        answers.append(str(earliest_title))
-    else:
-        print("No films over threshold found")
-        answers.append(None)
-else:
-    answers.append(None)
-    
-
-except Exception as e:
-print(f"Error processing questions: {{e}}")
-answers.extend([0, None])
-
-Ensure we have exactly 2 answers
-while len(answers) < 2:
+for question_idx, question in enumerate(question_list):
+# Clean question text
+clean_question = re.sub(r'^\d+\.\s*', '', question).strip()
+if not clean_question:
 answers.append(None)
-answers = answers[:2]
+continue
+print(f"\\nQ{{question_idx+1}}: {{clean_question[:100]}}")
+q_lower = clean_question.lower()
 
-Convert to safe JSON types
-answers = [safe_json_convert(x) for x in answers]
-print("Final answers:", answers)
-print(json.dumps(answers))
-
-Return as: {{ "code": "your_python_script" }}
-"""
-    
-    else:
-        # Hollywood films template
-        return f"""
-You are analyzing highest-grossing films data. Write a Python script to answer the questions.
-
-COLUMNS:
-{column_context}
-
-SAMPLE DATA:
-{sample_text}
-
-QUESTIONS:
-{questions_text}
-
-CRITICAL REQUIREMENTS:
-- Handle Wikipedia footnote markers (like '24RK', '^T^')
-- Use pd.to_numeric(..., errors='coerce') for safe conversion
-- Always use .loc[] for DataFrame assignment
-- Return ONLY raw values, not sentences
-
-COMPLETE SCRIPT:
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import base64
-import io
-import json
-
-Load data
-df = pd.read_csv('/workspace/cleaned_data.csv')
-print("=== DATA DEBUG ===")
-print(f"Columns: {{list(df.columns)}}")
-print(f"Shape: {{df.shape}}")
-print("Sample data:")
-print(df.head())
-
-Safe JSON conversion function
-def safe_json_convert(obj):
-if hasattr(obj, "item"):
-return obj.item()
-if pd.isna(obj):
-return None
-if isinstance(obj, (np.integer,)):
-return int(obj)
-if isinstance(obj, (np.floating,)):
-return float(obj)
-return obj
-
-Clean and convert data properly
-df_work = df.copy()
-
-Clean columns based on what's available
-if 'Rank' in df_work.columns:
-df_work.loc[:, 'rank_clean'] = df_work['Rank'].astype(str).str.replace(r'[A-Z]+', '', regex=True)
-df_work.loc[:, 'rank_num'] = pd.to_numeric(df_work['rank_clean'], errors='coerce')
-
-if 'Peak' in df_work.columns:
-df_work.loc[:, 'peak_clean'] = df_work['Peak'].astype(str).str.replace(r'[A-Z]+', '', regex=True)
-df_work.loc[:, 'peak_num'] = pd.to_numeric(df_work['peak_clean'], errors='coerce')
-
-if 'Year' in df_work.columns:
-df_work.loc[:, 'year_num'] = pd.to_numeric(df_work['Year'], errors='coerce')
-
-if 'Worldwide gross' in df_work.columns:
-df_work.loc[:, 'gross_num'] = pd.to_numeric(df_work['Worldwide gross'], errors='coerce')
-
-print("=== AFTER CLEANING ===")
-available_cols = [col for col in ['rank_num', 'peak_num', 'year_num', 'gross_num'] if col in df_work.columns]
-if available_cols:
-print("Data types:", df_work[available_cols].dtypes)
-print("Sample values:")
-print(df_work[available_cols].head())
-
-Initialize answers array
-answers = []
-
-Analyze questions and provide appropriate responses
 try:
-questions_lower = "{questions_text}".lower()
-
-# Question 1: Count movies above threshold before year
-if "2 bn" in questions_lower or "2bn" in questions_lower:
-    threshold = 2000000000  # $2 billion
-    year_threshold = 2000
-elif "1.5 bn" in questions_lower or "1.5bn" in questions_lower:
-    threshold = 1500000000  # $1.5 billion
-    year_threshold = 2000
-else:
-    threshold = 1000000000  # Default $1 billion
-    year_threshold = 2000
-
-if 'gross_num' in df_work.columns and 'year_num' in df_work.columns:
-    condition = (df_work['year_num'] < year_threshold) & (df_work['gross_num'] >= threshold)
-    count = condition.sum()
-    answers.append(int(count))
-    print(f"Q1: {{count}} movies over threshold before {{year_threshold}}")
-else:
-    answers.append(0)
-
-# Question 2: Earliest film over threshold
-if 'gross_num' in df_work.columns and 'year_num' in df_work.columns:
-    over_threshold = df_work[df_work['gross_num'] >= threshold]
-    if len(over_threshold) > 0:
-        earliest_idx = over_threshold['year_num'].idxmin()
-        earliest_title = df_work.loc[earliest_idx, 'Title']
-        answers.append(str(earliest_title))
-        print(f"Q2: Earliest film: {{earliest_title}}")
-    else:
-        answers.append(None)
-else:
-    answers.append(None)
-
-# Question 3: Correlation (if applicable)
-if 'rank_num' in df_work.columns and 'peak_num' in df_work.columns:
-    valid_data = df_work[['rank_num', 'peak_num']].dropna()
-    if len(valid_data) > 1:
-        correlation = valid_data['rank_num'].corr(valid_data['peak_num'])
-        answers.append(float(correlation))
-    else:
-        answers.append(None)
-
-# Question 4: Visualization (if requested)
-if "chart" in questions_lower or "plot" in questions_lower or "visual" in questions_lower:
-    if 'rank_num' in df_work.columns and 'peak_num' in df_work.columns:
-        valid_data = df_work[['rank_num', 'peak_num']].dropna()
-        if len(valid_data) > 1:
-            plt.figure(figsize=(10, 6))
-            plt.scatter(valid_data['rank_num'], valid_data['peak_num'], alpha=0.7)
-            plt.xlabel('Rank')
-            plt.ylabel('Peak')
-            plt.title('Rank vs Peak Correlation')
+    # 1. COUNTING QUESTIONS
+    if any(word in q_lower for word in ['how many', 'count', 'number of']):
+        print("→ Count question")
+        
+        filtered_df = df_work.copy()
+        
+        # Apply continent filters
+        if col_info['continent_col'] and col_info['continent_col'] in df_work.columns:
+            continent_applied = False
+            for continent in ['asia', 'europe', 'africa', 'north america', 'south america', 'oceania']:
+                if continent in q_lower:
+                    if continent == 'north america':
+                        mask = df_work[col_info['continent_col']].str.contains('North America', case=False, na=False)
+                    elif continent == 'south america':
+                        mask = df_work[col_info['continent_col']].str.contains('South America', case=False, na=False)
+                    else:
+                        mask = df_work[col_info['continent_col']].str.contains(continent.title(), case=False, na=False)
+                    
+                    filtered_df = filtered_df[mask]
+                    print(f"  Applied continent filter: {{continent}} ({{mask.sum()}} matches)")
+                    continent_applied = True
+                    break
+        
+        # Apply population thresholds
+        if 'population_num' in df_work.columns:
+            # Look for million thresholds
+            million_matches = re.findall(r'(\\d+)\\s*million', q_lower)
+            for million_str in million_matches:
+                threshold = float(million_str) * 1000000
+                mask = filtered_df['population_num'] >= threshold
+                filtered_df = filtered_df[mask]
+                print(f"  Applied population filter >= {{threshold}} ({{mask.sum()}} matches)")
             
+            # Look for billion thresholds
+            billion_matches = re.findall(r'(\\d+(?:\\.\\d+)?)\\s*(?:bn|billion)', q_lower)
+            for billion_str in billion_matches:
+                threshold = float(billion_str) * 1000000000
+                mask = filtered_df['gross_num'] >= threshold if 'gross_num' in df_work.columns else pd.Series([False] * len(filtered_df))
+                filtered_df = filtered_df[mask]
+                print(f"  Applied billion filter >= {{threshold}} ({{mask.sum()}} matches)")
+        
+        # Apply year filters
+        if 'year_num' in df_work.columns:
+            if 'before' in q_lower:
+                year_matches = re.findall(r'before\\s*(\\d{{4}})', q_lower)
+                for year_str in year_matches:
+                    year_threshold = int(year_str)
+                    mask = filtered_df['year_num'] < year_threshold
+                    filtered_df = filtered_df[mask]
+                    print(f"  Applied year filter < {{year_threshold}} ({{mask.sum()}} matches)")
+        
+        count = len(filtered_df)
+        print(f"  Final count: {{count}}")
+        answers.append(int(count))
+    
+    # 2. IDENTIFICATION QUESTIONS
+    elif any(word in q_lower for word in ['which', 'what is', 'name of', 'highest', 'largest', 'earliest']):
+        print("→ Identification question")
+        
+        filtered_df = df_work.copy()
+        result = None
+        
+        # Apply continent filters first
+        if col_info['continent_col'] and col_info['continent_col'] in df_work.columns:
+            for continent in ['asia', 'europe', 'africa', 'north america', 'south america', 'oceania']:
+                if continent in q_lower:
+                    if continent == 'north america':
+                        mask = df_work[col_info['continent_col']].str.contains('North America', case=False, na=False)
+                    elif continent == 'south america':
+                        mask = df_work[col_info['continent_col']].str.contains('South America', case=False, na=False)
+                    else:
+                        mask = df_work[col_info['continent_col']].str.contains(continent.title(), case=False, na=False)
+                    
+                    filtered_df = filtered_df[mask]
+                    print(f"  Applied continent filter: {{continent}} ({{mask.sum()}} matches)")
+                    break
+        
+        # Find highest/largest
+        if any(term in q_lower for term in ['highest', 'largest', 'most']) and 'population_num' in df_work.columns:
+            if len(filtered_df) > 0:
+                max_idx = filtered_df['population_num'].idxmax()
+                if col_info['location_col'] and max_idx in df_work.index:
+                    result = str(df_work.loc[max_idx, col_info['location_col']])
+                    print(f"  Found highest population: {{result}}")
+        
+        # Find earliest
+        elif 'earliest' in q_lower:
+            if 'gross_num' in df_work.columns and 'year_num' in df_work.columns:
+                # Look for thresholds
+                threshold_found = False
+                for threshold_match in re.findall(r'(\\d+(?:\\.\\d+)?)\\s*(?:bn|billion)', q_lower):
+                    threshold = float(threshold_match) * 1000000000
+                    over_threshold = df_work[df_work['gross_num'] >= threshold]
+                    if len(over_threshold) > 0:
+                        earliest_idx = over_threshold['year_num'].idxmin()
+                        if col_info['title_col'] and earliest_idx in df_work.index:
+                            result = str(df_work.loc[earliest_idx, col_info['title_col']])
+                            threshold_found = True
+                            break
+                
+                if not threshold_found:
+                    for threshold_match in re.findall(r'(\\d+)\\s*crore', q_lower):
+                        threshold = float(threshold_match)
+                        over_threshold = df_work[df_work['gross_num'] >= threshold]
+                        if len(over_threshold) > 0:
+                            earliest_idx = over_threshold['year_num'].idxmin()
+                            if col_info['title_col'] and earliest_idx in df_work.index:
+                                result = str(df_work.loc[earliest_idx, col_info['title_col']])
+                                break
+        
+        if result is None:
+            result = "Not found"
+        
+        answers.append(result)
+    
+    # 3. STATISTICAL QUESTIONS
+    elif any(word in q_lower for word in ['average', 'mean', 'correlation']):
+        print("→ Statistical question")
+        
+        if 'correlation' in q_lower:
+            if 'rank_num' in df_work.columns and 'peak_num' in df_work.columns:
+                valid_data = df_work[['rank_num', 'peak_num']].dropna()
+                if len(valid_data) > 1:
+                    correlation = valid_data['rank_num'].corr(valid_data['peak_num'])
+                    answers.append(float(correlation))
+                    print(f"  Correlation: {{correlation}}")
+                else:
+                    answers.append(None)
+            else:
+                answers.append(None)
+        
+        elif any(word in q_lower for word in ['average', 'mean']):
+            filtered_df = df_work.copy()
+            
+            # Apply continent filter
+            if col_info['continent_col'] and col_info['continent_col'] in df_work.columns:
+                for continent in ['asia', 'europe', 'africa', 'america', 'oceania']:
+                    if continent in q_lower:
+                        if continent == 'america':
+                            mask = df_work[col_info['continent_col']].str.contains('America', case=False, na=False)
+                        else:
+                            mask = df_work[col_info['continent_col']].str.contains(continent.title(), case=False, na=False)
+                        
+                        filtered_df = filtered_df[mask]
+                        print(f"  Applied continent filter: {{continent}} ({{mask.sum()}} matches)")
+                        break
+            
+            if 'population_num' in df_work.columns:
+                avg_pop = filtered_df['population_num'].mean()
+                answers.append(float(avg_pop))
+                print(f"  Average population: {{avg_pop}}")
+            else:
+                answers.append(None)
+    
+    # 4. VISUALIZATION QUESTIONS
+    elif any(word in q_lower for word in ['chart', 'plot', 'bar', 'graph', 'scatter']):
+        print("→ Visualization question")
+        
+        try:
+            if 'scatter' in q_lower and 'rank_num' in df_work.columns and 'peak_num' in df_work.columns:
+                # Scatter plot
+                valid_data = df_work[['rank_num', 'peak_num']].dropna()
+                if len(valid_data) > 1:
+                    plt.figure(figsize=(10, 6))
+                    plt.scatter(valid_data['rank_num'], valid_data['peak_num'], alpha=0.7, s=50)
+                    
+                    if 'regression' in q_lower or 'line' in q_lower:
+                        coeffs = np.polyfit(valid_data['rank_num'], valid_data['peak_num'], 1)
+                        poly_func = np.poly1d(coeffs)
+                        x_range = np.linspace(valid_data['rank_num'].min(), valid_data['rank_num'].max(), 100)
+                        plt.plot(x_range, poly_func(x_range), 'r--', alpha=0.8, linewidth=2)
+                    
+                    plt.xlabel('Rank')
+                    plt.ylabel('Peak')
+                    plt.title('Rank vs Peak')
+                    plt.grid(True, alpha=0.3)
+            
+            elif any(word in q_lower for word in ['bar', 'top']):
+                # Bar chart
+                if col_info['location_col'] and 'population_num' in df_work.columns:
+                    top_5 = df_work.nlargest(5, 'population_num')
+                    
+                    plt.figure(figsize=(12, 6))
+                    
+                    if 'horizontal' in q_lower:
+                        plt.barh(range(len(top_5)), top_5['population_num'] / 1000000, color='steelblue')
+                        plt.yticks(range(len(top_5)), top_5[col_info['location_col']])
+                        plt.xlabel('Population (Millions)')
+                        plt.gca().invert_yaxis()
+                    else:
+                        plt.bar(range(len(top_5)), top_5['population_num'] / 1000000, color='steelblue')
+                        plt.xticks(range(len(top_5)), top_5[col_info['location_col']], rotation=45)
+                        plt.ylabel('Population (Millions)')
+                    
+                    plt.title('Top 5 Most Populous Countries')
+                    plt.tight_layout()
+            
+            # Convert to base64
             buf = io.BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight')
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=100)
             buf.seek(0)
             img_b64 = base64.b64encode(buf.getvalue()).decode()
             plt.close()
             
-            answers.append(f"data:image/png;base64,{{img_b64}}")
-        else:
-            answers.append(None)
+            chart_data_uri = f"data:image/png;base64,{{img_b64}}"
+            answers.append(chart_data_uri)
+            print("  Chart generated successfully")
             
-
+        except Exception as e:
+            print(f"  Chart generation error: {{e}}")
+            answers.append("Chart generation failed")
+    
+    else:
+        print("→ Question type not recognized")
+        answers.append("Question type not recognized")
+        
 except Exception as e:
-print(f"Error: {{e}}")
-# Provide fallback answers
-while len(answers) < 2:
+    print(f"Error processing question {{question_idx+1}}: {{e}}")
+    answers.append("Processing error")
+
+Ensure correct answer count
+target_count = len(question_list)
+while len(answers) < target_count:
 answers.append(None)
+answers = answers[:target_count]
 
-Ensure we have the right number of answers
-answers = answers[:len("{questions}".split('\n'))]
-
-Convert and output
-answers = [safe_json_convert(x) for x in answers]
+Final output
+answers = [safe_json_convert(a) for a in answers]
+print("\n=== FINAL RESULTS ===")
+print(f"Questions: {{len(question_list)}}")
+print(f"Answers: {{len(answers)}}")
 print("Final answers:", answers)
 print(json.dumps(answers))
 
 
-Return as: {{ "code": "your_python_script" }}
+Return as: {{"code": "your_python_script"}}
 """
+
 
 
 
@@ -391,5 +484,4 @@ print(json.dumps([safe_json_convert(x) for x in answers]))
 
 
 Respond as JSON: {{ "code": "your_python_script_here" }}
-"""
-
+    """

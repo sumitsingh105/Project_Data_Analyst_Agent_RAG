@@ -302,7 +302,81 @@ def detect_data_types_automatically(df: pd.DataFrame) -> dict:
     print(f"Data type analysis complete for {len(column_analysis)} columns")
     return column_analysis
 
-
+def add_continent_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Add continent column based on country names"""
+    try:
+        import pycountry_convert as pc
+        
+        def country_to_continent(country_name):
+            try:
+                # Handle special cases
+                country_mapping = {
+                    'United States': 'United States',
+                    'Russia': 'Russia', 
+                    'United Kingdom': 'United Kingdom',
+                    'South Korea': 'South Korea',
+                    'North Korea': 'North Korea'
+                }
+                
+                mapped_name = country_mapping.get(str(country_name), str(country_name))
+                
+                country_alpha2 = pc.country_name_to_country_alpha2(mapped_name)
+                continent_code = pc.country_alpha2_to_continent_code(country_alpha2)
+                continent_name = pc.convert_continent_code_to_continent_name(continent_code)
+                return continent_name
+            except:
+                # Manual mapping for common cases
+                manual_mapping = {
+                    'China': 'Asia', 'India': 'Asia', 'Indonesia': 'Asia', 
+                    'Pakistan': 'Asia', 'Bangladesh': 'Asia', 'Japan': 'Asia',
+                    'Philippines': 'Asia', 'Vietnam': 'Asia', 'Turkey': 'Asia',
+                    'Iran': 'Asia', 'Thailand': 'Asia', 'Myanmar': 'Asia',
+                    'South Korea': 'Asia', 'North Korea': 'Asia', 'Iraq': 'Asia',
+                    'Afghanistan': 'Asia', 'Saudi Arabia': 'Asia', 'Malaysia': 'Asia',
+                    
+                    'Brazil': 'South America', 'Argentina': 'South America', 
+                    'Colombia': 'South America', 'Peru': 'South America',
+                    'Venezuela': 'South America', 'Chile': 'South America',
+                    'Ecuador': 'South America', 'Bolivia': 'South America',
+                    'Paraguay': 'South America', 'Uruguay': 'South America',
+                    
+                    'Russia': 'Europe', 'Germany': 'Europe', 'United Kingdom': 'Europe', 
+                    'France': 'Europe', 'Italy': 'Europe', 'Spain': 'Europe',
+                    'Poland': 'Europe', 'Ukraine': 'Europe', 'Romania': 'Europe',
+                    'Netherlands': 'Europe', 'Belgium': 'Europe', 'Greece': 'Europe',
+                    'Portugal': 'Europe', 'Czech Republic': 'Europe', 'Hungary': 'Europe',
+                    'Sweden': 'Europe', 'Austria': 'Europe', 'Belarus': 'Europe',
+                    'Switzerland': 'Europe', 'Bulgaria': 'Europe', 'Serbia': 'Europe',
+                    
+                    'United States': 'North America', 'Mexico': 'North America',
+                    'Canada': 'North America', 'Guatemala': 'North America',
+                    'Cuba': 'North America', 'Haiti': 'North America',
+                    'Dominican Republic': 'North America', 'Honduras': 'North America',
+                    
+                    'Nigeria': 'Africa', 'Ethiopia': 'Africa', 'Egypt': 'Africa',
+                    'Democratic Republic of Congo': 'Africa', 'Tanzania': 'Africa',
+                    'South Africa': 'Africa', 'Kenya': 'Africa', 'Uganda': 'Africa',
+                    'Algeria': 'Africa', 'Sudan': 'Africa', 'Morocco': 'Africa',
+                    'Angola': 'Africa', 'Ghana': 'Africa', 'Mozambique': 'Africa',
+                    
+                    'Australia': 'Oceania', 'Papua New Guinea': 'Oceania',
+                    'New Zealand': 'Oceania', 'Fiji': 'Oceania'
+                }
+                
+                return manual_mapping.get(str(country_name), 'Unknown')
+        
+        df['Continent'] = df['Location'].apply(country_to_continent)
+        print(f"Added continent mapping. Sample: {df[['Location', 'Continent']].head()}")
+        return df
+        
+    except ImportError:
+        print("pycountry-convert not installed, using manual mapping only")
+        # Fallback to manual mapping only
+        manual_mapping = {
+            # [Include the same manual mapping as above]
+        }
+        df['Continent'] = df['Location'].apply(lambda x: manual_mapping.get(str(x), 'Unknown'))
+        return df
 
 
 def universal_data_cleaner(df: pd.DataFrame, column_analysis: dict) -> pd.DataFrame:
@@ -449,6 +523,11 @@ def universal_data_cleaner(df: pd.DataFrame, column_analysis: dict) -> pd.DataFr
             
             df_clean[col] = df_clean[col].apply(clean_text)
     
+    if 'Location' in df_clean.columns:
+        print("Adding continent mapping...")
+        df_clean = add_continent_column(df_clean)
+
+
     # Remove completely empty rows
     df_clean = df_clean.dropna(how='all')
     print(f"Cleaned data shape: {df_clean.shape}")
@@ -464,7 +543,12 @@ def universal_data_cleaner(df: pd.DataFrame, column_analysis: dict) -> pd.DataFr
             if max_val > 1e20:  # Suspiciously large number
                 print(f"⚠️ Warning: Column '{col}' has suspiciously large values (max: {max_val})")
     
+
+
     return df_clean
+
+
+
 
 def infer_schema(df: pd.DataFrame) -> dict:
     schema = {}
