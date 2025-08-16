@@ -5,7 +5,6 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
@@ -29,15 +28,11 @@ COPY . .
 RUN mkdir -p temp_workspaces
 RUN chmod 755 temp_workspaces
 
-# FIXED: Safe user creation avoiding UID conflict
-RUN if id -u 1000 >/dev/null 2>&1; then \
-    useradd -m -u 1001 appuser && chown -R appuser:appuser /app; \
-    else \
-    useradd -m -u 1000 appuser && chown -R appuser:appuser /app; \
-    fi
+# Skip user creation for now (causing UID conflicts)
+# RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# USER appuser
 
-USER appuser
+EXPOSE $PORT
 
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# FIXED: Use Railway's PORT environment variable
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
