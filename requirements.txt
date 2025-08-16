@@ -23,8 +23,15 @@ lxml==4.9.3
 aiohttp==3.9.1
 pycountry-convert==0.7.2
 
+
+fastapi
+uvicorn
+playwright
 # Remove these problematic dependencies:
 # docker          ← Not needed on Render
 # playwright       ← Requires system dependencies
 # google-generativeai ← Not used in current code
 # serpapi          ← Not used in current code
+pillow
+pytesseract
+opencv-python
