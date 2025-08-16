@@ -9,4 +9,7 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Playwright dependencies are pre-installed in this image, no additional commands required
+COPY . .
+
+# Start FastAPI with Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
