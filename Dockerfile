@@ -28,11 +28,8 @@ COPY . .
 RUN mkdir -p temp_workspaces
 RUN chmod 755 temp_workspaces
 
-# Skip user creation for now (causing UID conflicts)
-# RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-# USER appuser
-
+# CRITICAL: Use Railway's PORT environment variable
 EXPOSE $PORT
 
-# FIXED: Use Railway's PORT environment variable
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# CRITICAL: Start command that uses Railway PORT
+CMD ["sh", "-c", "echo 'Starting on port:' $PORT && uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info"]

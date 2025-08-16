@@ -2,11 +2,12 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info"
 healthcheckPath = "/"
-healthcheckTimeout = 300
+healthcheckTimeout = 600
 healthcheckInterval = 30
-healthcheckGracePeriod = 60
+healthcheckGracePeriod = 120
+healthcheckRetries = 10
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
