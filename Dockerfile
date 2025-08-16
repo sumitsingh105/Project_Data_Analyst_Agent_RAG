@@ -3,10 +3,9 @@ FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
 
 WORKDIR /app
 
-# Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install system dependencies for OCR and image processing
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
@@ -20,30 +19,25 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install playwright browsers explicitly (may be needed for scraping)
 RUN playwright install chromium
 RUN playwright install-deps chromium
 
-# Copy application code
 COPY . .
 
-# Create temp workspace directory with proper permissions
 RUN mkdir -p temp_workspaces
 RUN chmod 755 temp_workspaces
 
-# Create non-root user for security (optional but recommended)
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# FIXED: Safe user creation avoiding UID conflict
+RUN if id -u 1000 >/dev/null 2>&1; then \
+    useradd -m -u 1001 appuser && chown -R appuser:appuser /app; \
+    else \
+    useradd -m -u 1000 appuser && chown -R appuser:appuser /app; \
+    fi
+
 USER appuser
 
-# Expose port (Railway will use PORT env variable)
-EXPOSE $PORT
+EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/ || exit 1
-
-# Start FastAPI with Uvicorn (use Railway's PORT env variable)
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
