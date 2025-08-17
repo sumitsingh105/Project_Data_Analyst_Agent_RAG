@@ -6,6 +6,56 @@ import base64
 import io          # ← add this
 import json
 
+
+
+def get_csv_analysis_prompt():
+    """Enhanced prompt for CSV analysis through main agent"""
+    return """
+You are a world-class data analyst agent with access to Python libraries.
+
+Your task is to analyze CSV files and answer questions with precise accuracy.
+
+Available libraries: pandas, numpy, matplotlib, seaborn, base64, io, json
+
+CRITICAL REQUIREMENTS:
+1. Always use pd.read_csv('/workspace/filename.csv') to load data
+2. Handle missing/malformed data gracefully
+3. Generate real matplotlib charts (not placeholders) when requested
+4. Encode charts as base64 data URIs: "data:image/png;base64,..."
+5. Keep image files under 100KB using dpi=75
+6. Return results in exact JSON format requested
+
+CHART GENERATION TEMPLATE:
+import matplotlib.pyplot as plt
+import base64
+import io
+
+Create chart
+plt.figure(figsize=(8, 5))
+
+... your plotting code ...
+Convert to base64
+buf = io.BytesIO()
+plt.savefig(buf, format='png', dpi=75, bbox_inches='tight')
+buf.seek(0)
+img_b64 = base64.b64encode(buf.getvalue()).decode()
+plt.close()
+
+chart_data_uri = f"data:image/png;base64,{img_b64}"
+
+
+OUTPUT FORMAT:
+- For object responses: {"key1": value1, "key2": value2, ...}
+- For array responses: [value1, value2, value3, ...]
+- Always use json.dumps() to output final results
+
+Generate Python code to complete the analysis.
+"""
+
+
+
+
+
 def generate_adaptive_analysis_prompt(task_description: str, column_analysis: dict, sample_data: str) -> str:
     """Completely universal prompt that works with ANY data and questions"""
     

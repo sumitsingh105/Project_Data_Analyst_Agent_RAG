@@ -1,5 +1,3 @@
-
-
 Scrape the list of countries and dependencies by population from Wikipedia. The URL is:
 https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population
 
