@@ -1,12 +1,15 @@
-Q1. Scrape the list of highest grossing films from Wikipedia. It is at the URL:
-https://en.wikipedia.org/wiki/List_of_highest-grossing_films
 
-Answer the following questions and respond with a JSON array of strings containing the answer.
 
-1. How many $2 bn movies were released before 2000?
-2. Which is the earliest film that grossed over $1.5 bn?
-3. What's the correlation between the Rank and Peak?
-4. Draw a scatterplot of Rank and Peak along with a dotted red regression line through it.
-   Return as a base-64 encoded data URI, `"data:image/png;base64,iVBORw0KG..."` under 100,000 bytes.
+Scrape the list of countries and dependencies by population from Wikipedia. The URL is:
+https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population
 
+Answer the following questions and respond with a JSON array containing the answers. The final output must be a single JSON array with 4 elements corresponding to the answers.
+
+1. How many countries in the continent of Asia have a population greater than 100 million?
+
+2. What is the name of the country with the highest population in South America?
+
+3. What is the average population of countries in Europe?
+
+4. Create a horizontal bar chart showing the population of the top 5 most populous countries in the world. Return the chart as a base-64 encoded data URI ("data:image/png;base64,...") under 100,000 bytes.
 
